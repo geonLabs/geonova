@@ -1,0 +1,7 @@
+<launch>
+    <!-- YAML 파일 로드 -->
+    <rosparam file="$(find geonova)/config/config.yaml" command="load" />
+
+    <!-- 노드 실행 -->
+    <node pkg="geonova" type="main.py" name="geonova_node" output="screen" />
+</launch>

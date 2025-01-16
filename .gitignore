@@ -1,2 +1,4 @@
 src/geonova/models
 
+build/
+devel/
