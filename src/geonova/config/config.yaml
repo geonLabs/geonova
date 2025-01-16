@@ -1,1 +1,1 @@
-model: "../models/best.pt"
+model: "../models/yolov8n.pt"
