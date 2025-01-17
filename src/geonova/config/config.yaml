@@ -1,1 +1,2 @@
 model: "../models/yolov8n.pt"
+img_lig: "opencv" #or vpi
