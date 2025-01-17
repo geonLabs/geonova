@@ -1,8 +1,9 @@
 import sys
 sys.path.append("/usr/lib/python3/dist-packages")  # Ensure VPI is accessible
 import vpi
-
+import os
 import cv2
+import uuid
 import numpy as np
 import torch
 from torch.nn.functional import interpolate
@@ -25,158 +26,87 @@ class image_tools:
             else:
                 rospy.logerr(f"Unsupported image encoding: {image_msg.encoding}")
                 return None
+
+            # Rotate the image 180 degrees
+            cv_image = cv2.rotate(cv_image, cv2.ROTATE_180)
+            
             return cv_image
         except Exception as e:
             rospy.logerr(f"Failed to convert image: {e}")
             return None
 
-    def resize_with_padding(self, image, target_size=(640, 640), device="cuda"):
+    def save_image(self, cv_image, save_path):
+        try:
+            # 디렉토리가 없는 경우 생성
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+
+            # UUID 기반 파일 이름 생성
+            unique_filename = f"{uuid.uuid4()}.jpg"
+            save_path = os.path.join(save_path, unique_filename)
+
+            # 이미지 저장
+            cv2.imwrite(save_path, cv_image)
+            rospy.loginfo(f"Image saved to {save_path}")
+        except Exception as e:
+            rospy.logerr(f"Failed to save image: {e}")
+
+    
+    def calculate_depth_at_center(self, depth_image, center_x, center_y, box_width, box_height):
         """
-        Resize the image to the target size with padding to maintain aspect ratio.
-        This function performs resizing on GPU using PyTorch if a CUDA device is specified.
+        박스 내부의 깊이값을 계산합니다.
 
-        Args:
-            image (numpy.ndarray): Input image.
-            target_size (tuple): Target size (width, height).
-            device (str): Device to perform the operations ("cpu" or "cuda").
-
-        Returns:
-            torch.Tensor: Resized and padded image as a Torch tensor on the specified device,
-                          formatted for YOLOv8 input (B, C, H, W) with values in the range [0, 1].
+        :param depth_image: NumPy 배열로 된 깊이 이미지
+        :param center_x: 중심 x 좌표 (픽셀 단위)
+        :param center_y: 중심 y 좌표 (픽셀 단위)
+        :param box_width: 박스의 너비 (픽셀 단위)
+        :param box_height: 박스의 높이 (픽셀 단위)
+        :return: 박스 내부 유효 깊이값의 평균 (미터 단위) 또는 None
         """
-        start_time = time.time()
-        original_height, original_width = image.shape[:2]
-        target_width, target_height = target_size
+        height, width = depth_image.shape
 
-        # Convert image to Torch tensor and move to the specified device
-        tensor_image = torch.from_numpy(image).permute(2, 0, 1).float().to(device) / 255.0
+        # 박스 좌표 계산
+        top_left_x = max(center_x - box_width // 2, 0)
+        top_left_y = max(center_y - box_height // 2, 0)
+        bottom_right_x = min(center_x + box_width // 2, width)
+        bottom_right_y = min(center_y + box_height // 2, height)
 
-        # Calculate the scaling factor to fit the image within the target size
-        scale = min(target_width / original_width, target_height / original_height)
+        # 박스 내 깊이값 추출
+        box_depth_values = depth_image[top_left_y:bottom_right_y, top_left_x:bottom_right_x].flatten()
 
-        # Calculate the new width and height
-        new_width = int(original_width * scale)
-        new_height = int(original_height * scale)
+        # 유효한 깊이값 필터링 (0 < depth <= 15미터)
+        box_depth_values_m = box_depth_values / 1000.0  # mm → m
+        valid_depths = box_depth_values_m[(box_depth_values_m > 0) & (box_depth_values_m <= 15.0)]
 
-        # Resize the image using PyTorch interpolate
-        resized_image = interpolate(
-            tensor_image.unsqueeze(0), 
-            size=(new_height, new_width), 
-            mode="bilinear", 
-            align_corners=False
-        ).squeeze(0)
+        if valid_depths.size == 0:
+            return None
 
-        # Calculate padding values
-        pad_width = target_width - new_width
-        pad_height = target_height - new_height
+        # 이상치 제거 (상위 20% 제거)
+        threshold = np.percentile(valid_depths, 80)
+        filtered_depths = valid_depths[valid_depths <= threshold]
 
-        top = pad_height // 2
-        bottom = pad_height - top
-        left = pad_width // 2
-        right = pad_width - left
+        if filtered_depths.size == 0:
+            return None
 
-        # Add padding using torch.nn.functional.pad
-        padded_image = torch.nn.functional.pad(
-            resized_image, (left, right, top, bottom), mode="constant", value=0
-        )
+        # 평균값 계산
+        return np.mean(filtered_depths)
+    
+    def result_depth(self, depth_img, result):
+        boxes = result.boxes.xywhn.cpu().numpy()
+        class_ids = result.boxes.cls.cpu().numpy().astype(int)
+        confidences = result.boxes.conf.cpu().numpy()  
 
-        # Add batch dimension for YOLOv8 input (B, C, H, W)
-        yolo_input = padded_image.unsqueeze(0)
-        end_time = time.time()
-        rospy.loginfo(f"Resize and padding processing time: {(end_time - start_time) * 1000:.2f} ms")
-        return yolo_input
-
-    def ros_image_to_numpy(self, camera_image_msg):
-        if camera_image_msg.encoding == "rgb8":
-            dtype = np.uint8
-            channels = 3
-            print("using rgb8")
-        elif camera_image_msg.encoding == "bgr8":
-            dtype = np.uint8
-            channels = 3
-            # print("using bgr8")/
-        elif camera_image_msg.encoding == "mono8":
-            dtype = np.uint8
-            channels = 1
-            print("using mono8")
-        elif camera_image_msg.encoding == "16UC1":
-            dtype = np.uint16
-            channels = 1
-            print("using 16UC1")
-        else:
-            raise ValueError(f"지원되지 않는 인코딩 형식: {camera_image_msg.encoding}")
-
-        # ROS Image 메시지를 1차원 배열로 변환
-        image_data = np.frombuffer(camera_image_msg.data, dtype=dtype)
-
-        # 1차원 배열을 3차원 배열로 재구성
-        img_np_array = image_data.reshape((camera_image_msg.height, camera_image_msg.width, channels))
-
-        return img_np_array
-
-    def numpy_to_vpi_image(self, img_np_array):
-        if not img_np_array.flags.writeable:
-            img_np_array = np.copy(img_np_array)
-        img_np_array.setflags(write=True)
-        return vpi.asimage(img_np_array)
-
-    def flip_img(self, vpi_img):
-        with vpi.Backend.CUDA:
-            return vpi_img.image_flip(vpi.Flip.BOTH)
-
-
-    def add_padding_to_original(self, vpi_image, target_width, target_height):
-        original_width, original_height = vpi_image.size
-        # 스케일 비율 계산
-        scale_x = target_width / original_width
-        scale_y = target_height / original_height
-        scale = min(scale_x, scale_y)
-
-        # 새로운 크기 계산
-        new_width = int(original_width * scale)
-        new_height = int(original_height * scale)
-
-        # 패딩 크기 계산
-        pad_left = (target_width - new_width) // 2
-        pad_top = (target_height - new_height) // 2
-
-        backend = vpi.Backend.CUDA
-
-        with backend:
-            # NV12_ER 형식으로 변환
-            nv12_image = vpi_image.convert(vpi.Format.NV12_ER, backend=backend)
-
-            # 리스케일된 이미지를 저장할 임시 VPI 이미지 생성
-            resized_nv12_image = vpi.Image((new_width, new_height), format=vpi.Format.NV12_ER)
-            # 최종 출력 VPI 이미지 생성
-            output_nv12_image = vpi.Image((target_width, target_height), format=vpi.Format.NV12_ER)
-
-            # 리스케일 작업
-            nv12_image.rescale(resized_nv12_image, interp=vpi.Interp.CATMULL_ROM, backend=backend)
-
-            # 출력 이미지 초기화
-            with output_nv12_image.wlock_cpu() as dst_data:
-                y_data, uv_data = dst_data  # Y 성분과 UV 성분을 개별적으로 분리
-                y_data.fill(0)  # Y 성분 초기화
-                uv_data.fill(128)  # UV 성분 초기화 (중립색)
-
-            # 리스케일된 이미지를 중앙에 배치
-            with resized_nv12_image.rlock_cpu() as src_data:
-                src_y_data, src_uv_data = src_data  # 리스케일된 Y/UV 성분 분리
-                y_data[pad_top:pad_top+new_height, pad_left:pad_left+new_width] = src_y_data
-                uv_data[pad_top//2:(pad_top+new_height)//2, pad_left//2:(pad_left+new_width)//2] = src_uv_data
-
-            # NV12_ER 이미지를 원래 포맷으로 변환
-            output_vpi_image = output_nv12_image.convert(vpi.Format.RGB8, backend=backend)
-
-        return output_vpi_image
-
-    def vpi_to_torch_tensor(self, rescaling_img):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-        with rescaling_img.rlock_cuda() as cuda_buffer:
-            torch_tensor = torch.as_tensor(cuda_buffer, device=device)
-            torch_tensor = torch_tensor.permute(2, 0, 1).unsqueeze(0)
-            torch_tensor = torch_tensor.float() / 255.0
-
-        return torch_tensor
+        height, width = depth_img.shape
+        result = []
+        
+        for box, class_id, confidence in zip(boxes, class_ids, confidences):
+            # 박스 좌표 (정규화된 값 → 픽셀 단위)
+            center_x = int(box[0] * width)
+            center_y = int(box[1] * height)
+            box_width = int(box[2] * width)
+            box_height = int(box[3] * height)
+            
+            # 깊이값 추출
+            mean_depth_m = self.calculate_depth_at_center(depth_img, center_x, center_y, box_width, box_height)
+            result.append((class_id, mean_depth_m, confidence, box[0], box[1], box[2], box[3]))
+        return result

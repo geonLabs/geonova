@@ -1,4 +1,6 @@
+import os
 import rospy
+import rospkg
 from sensor_msgs.msg import Image, Imu, NavSatFix
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 
@@ -9,16 +11,19 @@ import time
 
 class Geonova:
     def __init__(self):
-        self.img_lib = rospy.get_param("img_lib")
-        self.model_path = rospy.get_param("model", "../models/yolov8n.pt")
+        self.ros_pack_dir = rospkg.RosPack().get_path('geonova')
+        self.model = rospy.get_param("model")
+        self.save_dir = rospy.get_param("save_dir")
+        self.model_path = os.path.join(self.ros_pack_dir,self.model)
         self.rgb_img_sub = Subscriber("/oak/rgb/image_raw", Image)
         self.stereo_img_sub = Subscriber("/oak/stereo/image_raw", Image)
-        self.iamgetools = utils.image_tools.image_tools()
-    
+        self.image_tools = utils.image_tools.image_tools()
+
+        self.model = utils.yolo_models.yolo_v8(self.model_path)
+
     def __call__(self):
         rospy.init_node("geonva", anonymous=True)
         rospy.loginfo("GeoNova Start")
-
         ats = ApproximateTimeSynchronizer(
             [self.rgb_img_sub, self.stereo_img_sub], 
             queue_size=30, 
@@ -28,19 +33,17 @@ class Geonova:
         rospy.spin()
 
     def sync_callback(self, rgb_msg, stereo_msg):
-        model = utils.yolo_models.model_load(self.model_path)
+        rgb_image = self.image_tools.convert_image(rgb_msg)
 
-        if self.img_lib == "opencv":
-            rgb_image = self.iamgetools.convert_image(rgb_msg)
-            resize_img = self.iamgetools.resize_with_padding(rgb_image)
-        else :
-            rgb_image = self.iamgetools.ros_image_to_numpy(rgb_msg)
-            rgb_vpi_img = self.iamgetools.flip_img(self.iamgetools.numpy_to_vpi_image(rgb_image))
-            rgb_vpi_resize = self.iamgetools.add_padding_to_original(rgb_vpi_img, 640, 640)
-            resize_img = self.iamgetools.vpi_to_torch_tensor(rgb_vpi_resize)
-
-        model(resize_img)
-        stereo_image = self.iamgetools.convert_image(stereo_msg)
+        save_result_dir = os.path.join(self.ros_pack_dir, self.save_dir)
+        stereo_image = self.image_tools.convert_image(stereo_msg)
+        result = self.model.model_inference(rgb_image)
+        
+        if result.boxes.xywh.numel() > 0:
+            self.image_tools.save_image(result.plot(), save_result_dir)
+            self.image_tools.save_image(rgb_image, save_result_dir)
+            results = self.image_tools.result_depth(stereo_image, result)
+            print(results)
 
     def stereo(self):
         pass

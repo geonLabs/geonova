@@ -4,3 +4,8 @@ build/
 devel/
 **/__pycache__/
 *.pt
+*.jpg
+src/geonova/data
+*.bag
+*.onnx
+*.engine

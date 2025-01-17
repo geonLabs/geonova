@@ -1,2 +1,2 @@
-model: "../models/yolov8n.pt"
-img_lig: "opencv" #or vpi
+model: "models/version2.3_model_m_imgsz_1280_best.engine"
+save_dir: "save_dir"
