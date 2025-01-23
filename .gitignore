@@ -9,3 +9,4 @@ src/geonova/data
 *.bag
 *.onnx
 *.engine
+src/geonova/save_dir
