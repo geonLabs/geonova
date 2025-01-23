@@ -17,6 +17,8 @@ class yolo_v8:
             stream=True,
             stream_buffer=True,
             verbose=False,
-            imgsz=1280
+            imgsz=1280,
+            conf=0.85,
+            classes=[0,2,3,4,5]
             )
         return list(results)[0]

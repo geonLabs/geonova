@@ -1,15 +1,9 @@
-import sys
-sys.path.append("/usr/lib/python3/dist-packages")  # Ensure VPI is accessible
-import vpi
 import os
 import cv2
 import uuid
 import numpy as np
-import torch
-from torch.nn.functional import interpolate
 from cv_bridge import CvBridge
 import rospy
-import time
 
 class image_tools:
     def __init__(self):

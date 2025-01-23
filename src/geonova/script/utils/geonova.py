@@ -41,7 +41,7 @@ class Geonova:
         
         if result.boxes.xywh.numel() > 0:
             self.image_tools.save_image(result.plot(), save_result_dir)
-            self.image_tools.save_image(rgb_image, save_result_dir)
+            #self.image_tools.save_image(rgb_image, save_result_dir)
             results = self.image_tools.result_depth(stereo_image, result)
             print(results)
 
