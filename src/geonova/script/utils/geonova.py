@@ -20,6 +20,7 @@ class Geonova:
         self.image_tools = utils.image_tools.image_tools()
 
         self.model = utils.yolo_models.yolo_v8(self.model_path)
+        self.save_result_dir = os.path.join(self.ros_pack_dir, self.save_dir)
 
     def __call__(self):
         rospy.init_node("geonva", anonymous=True)
@@ -35,15 +36,16 @@ class Geonova:
     def sync_callback(self, rgb_msg, stereo_msg):
         rgb_image = self.image_tools.convert_image(rgb_msg)
 
-        save_result_dir = os.path.join(self.ros_pack_dir, self.save_dir)
         stereo_image = self.image_tools.convert_image(stereo_msg)
-        result = self.model.model_inference(rgb_image)
+        results = self.model.model_inference(rgb_image)
         
-        if result.boxes.xywh.numel() > 0:
-            self.image_tools.save_image(result.plot(), save_result_dir)
-            #self.image_tools.save_image(rgb_image, save_result_dir)
-            results = self.image_tools.result_depth(stereo_image, result)
-            print(results)
+        if results.boxes.xywh.numel() > 0:
+            # self.image_tools.save_image(results.plot(), self.save_result_dir)
+            # self.image_tools.save_image(rgb_image, self.save_result_dir)
+            depth = self.image_tools.result_depth(stereo_image, results)
+            print("")
+
+        
 
     def stereo(self):
         pass

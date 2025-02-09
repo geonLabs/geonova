@@ -1,2 +1,3 @@
-model: "models/version2.3_model_m_imgsz_1280_best.engine"
+# model: "models/best.engine"
+model: "yolov8n.pt"
 save_dir: "save_dir"

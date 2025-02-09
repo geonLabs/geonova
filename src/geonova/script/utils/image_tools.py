@@ -22,7 +22,7 @@ class image_tools:
                 return None
 
             # Rotate the image 180 degrees
-            cv_image = cv2.rotate(cv_image, cv2.ROTATE_180)
+            #cv_image = cv2.rotate(cv_image, cv2.ROTATE_180)
             
             return cv_image
         except Exception as e:
@@ -68,8 +68,10 @@ class image_tools:
         # 박스 내 깊이값 추출
         box_depth_values = depth_image[top_left_y:bottom_right_y, top_left_x:bottom_right_x].flatten()
 
+        # print(box_depth_values)
+
         # 유효한 깊이값 필터링 (0 < depth <= 15미터)
-        box_depth_values_m = box_depth_values / 1000.0  # mm → m
+        box_depth_values_m = 468.22 * 7.5 / box_depth_values   # cm → m
         valid_depths = box_depth_values_m[(box_depth_values_m > 0) & (box_depth_values_m <= 15.0)]
 
         if valid_depths.size == 0:
@@ -91,7 +93,7 @@ class image_tools:
         confidences = result.boxes.conf.cpu().numpy()  
 
         height, width = depth_img.shape
-        result = []
+        results = []
         
         for box, class_id, confidence in zip(boxes, class_ids, confidences):
             # 박스 좌표 (정규화된 값 → 픽셀 단위)
@@ -102,5 +104,12 @@ class image_tools:
             
             # 깊이값 추출
             mean_depth_m = self.calculate_depth_at_center(depth_img, center_x, center_y, box_width, box_height)
-            result.append((class_id, mean_depth_m, confidence, box[0], box[1], box[2], box[3]))
-        return result
+            results.append((class_id, mean_depth_m, confidence, box[0], box[1], box[2], box[3]))
+            print(mean_depth_m)
+        return results
+    
+    def save_label_data(self, result):
+        result_list = []
+
+        
+        pass
