@@ -22,7 +22,7 @@ class image_tools:
                 return None
 
             # Rotate the image 180 degrees
-            #cv_image = cv2.rotate(cv_image, cv2.ROTATE_180)
+            cv_image = cv2.rotate(cv_image, cv2.ROTATE_180)
             
             return cv_image
         except Exception as e:
@@ -47,16 +47,6 @@ class image_tools:
 
     
     def calculate_depth_at_center(self, depth_image, center_x, center_y, box_width, box_height):
-        """
-        박스 내부의 깊이값을 계산합니다.
-
-        :param depth_image: NumPy 배열로 된 깊이 이미지
-        :param center_x: 중심 x 좌표 (픽셀 단위)
-        :param center_y: 중심 y 좌표 (픽셀 단위)
-        :param box_width: 박스의 너비 (픽셀 단위)
-        :param box_height: 박스의 높이 (픽셀 단위)
-        :return: 박스 내부 유효 깊이값의 평균 (미터 단위) 또는 None
-        """
         height, width = depth_image.shape
 
         # 박스 좌표 계산
@@ -68,11 +58,9 @@ class image_tools:
         # 박스 내 깊이값 추출
         box_depth_values = depth_image[top_left_y:bottom_right_y, top_left_x:bottom_right_x].flatten()
 
-        # print(box_depth_values)
-
         # 유효한 깊이값 필터링 (0 < depth <= 15미터)
-        box_depth_values_m = 468.22 * 7.5 / box_depth_values   # cm → m
-        valid_depths = box_depth_values_m[(box_depth_values_m > 0) & (box_depth_values_m <= 15.0)]
+        valid_depths = 312.15 * 7.5 / box_depth_values[box_depth_values > 0]
+        valid_depths = valid_depths[valid_depths <= 15.0]
 
         if valid_depths.size == 0:
             return None
@@ -97,19 +85,17 @@ class image_tools:
         
         for box, class_id, confidence in zip(boxes, class_ids, confidences):
             # 박스 좌표 (정규화된 값 → 픽셀 단위)
-            center_x = int(box[0] * width)
-            center_y = int(box[1] * height)
-            box_width = int(box[2] * width)
-            box_height = int(box[3] * height)
+            center_x, center_y = int(box[0] * width), int(box[1] * height)
+            box_width, box_height = int(box[2] * width), int(box[3] * height)
             
             # 깊이값 추출
             mean_depth_m = self.calculate_depth_at_center(depth_img, center_x, center_y, box_width, box_height)
-            results.append((class_id, mean_depth_m, confidence, box[0], box[1], box[2], box[3]))
-            print(mean_depth_m)
-        return results
+            if mean_depth_m:
+                results.append((class_id, mean_depth_m, confidence, center_x, center_y, box_width, box_height))
+            
+        return results if results else None  # 리스트가 비어 있으면 None 반환
+
     
     def save_label_data(self, result):
         result_list = []
-
-        
         pass
