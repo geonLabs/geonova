@@ -71,8 +71,8 @@ class Geonova:
         if depth is None:
             return
         
-        #img_name = self.image_tools.save_image(rgb_image, self.save_result_dir, results)
-        img_name = self.image_tools.save_image(results.plot(line_width=2, font_size=2), self.save_result_dir, results)
+        img_name = self.image_tools.save_image(rgb_image, self.save_result_dir, results)
+        #img_name = self.image_tools.save_image(results.plot(line_width=2, font_size=2), self.save_result_dir, results)
 
         if img_name is None:
             return
@@ -82,8 +82,6 @@ class Geonova:
 
         if gps_coordinate is None:
             return
-
-        print(f"GPS: {gps_coordinate}")
         
-        # payloader = utils.mqtt_send.PayloadSender(gps_coordinate, img_name)
-        # payloader()
+        payloader = utils.mqtt_send.PayloadSender(gps_coordinate, img_name)
+        payloader()

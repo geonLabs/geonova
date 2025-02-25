@@ -7,7 +7,9 @@ class CalCoordinate:
         self.lat = gps_msg.latitude
         self.lon = gps_msg.longitude
 
+        # heading값 바꿔야 하는 부분
         self.heading = heading_msg.quaternion.w
+        
 
         self.imu_orient = imu_msg.orientation
         self.imu_ang = imu_msg.angular_velocity
@@ -26,9 +28,10 @@ class CalCoordinate:
         if self.depth_result is None:
             return
         self.gps_coordinate()
-        if len(self.return_result()) == 0:
+        object_result = self.return_result()
+        if len(object_result) == 0:
             return None
-        return self.return_result()
+        return object_result
 
     def gps_coordinate(self):
         R = 6378137.0  # 지구 반지름 (미터)
@@ -81,7 +84,7 @@ class CalCoordinate:
         send_mqtt_result = []
         """
         massage_protocol
-        [class_id, confidence, x_center, y_center, width, height, object_lat, object_lon], 
+        [class_id, confidence, x1, y1, x2, y2, object_lat, object_lon], 
         [], 
         [], ...
         """
@@ -91,10 +94,10 @@ class CalCoordinate:
             send_mqtt_result.append(
                 (self.depth_result[i][0], 
                  self.depth_result[i][2],
-                 self.depth_result[i][3],
-                 self.depth_result[i][4], 
-                 self.depth_result[i][5],
-                 self.depth_result[i][6],
+                 self.depth_result[i][7],
+                 self.depth_result[i][8], 
+                 self.depth_result[i][9],
+                 self.depth_result[i][10],
                  round(obj_result[0], 5), 
                  round(obj_result[1], 5)
                  )

@@ -101,7 +101,7 @@ class image_tools:
 
         for box, class_id, confidence in zip(boxes, class_ids, confidences):
             # 클래스 5 이하 & conf_score ≥ 0.75 → 아무 처리 안 함 (체크만 함)
-            if class_id <= 5 and confidence >= 0.6:
+            if class_id <= 5 and confidence >= 0.8:
                 has_class_5_below_with_high_conf = True
                 continue
 
@@ -154,20 +154,22 @@ class image_tools:
     def result_depth(self, depth_img, result):
         boxes = result.boxes.xywhn.cpu().numpy()
         class_ids = result.boxes.cls.cpu().numpy().astype(int)
-        confidences = result.boxes.conf.cpu().numpy()  
+        confidences = result.boxes.conf.cpu().numpy()
+        boxes_xyxys = result.boxes.xyxy.cpu().numpy()  
 
         height, width = depth_img.shape
         results = []
         
-        for box, class_id, confidence in zip(boxes, class_ids, confidences):
+        for box, class_id, confidence, boxes_xyxy in zip(boxes, class_ids, confidences, boxes_xyxys):
             # 박스 좌표 (정규화된 값 → 픽셀 단위)
             center_x, center_y = int(box[0] * width), int(box[1] * height)
             box_width, box_height = int(box[2] * width), int(box[3] * height)
+            x1, y1, x2, y2 = boxes_xyxy
             
             # 깊이값 추출
             mean_depth_m = self.calculate_depth_at_center(depth_img, center_x, center_y, box_width, box_height)
             if mean_depth_m:
-                results.append((class_id, mean_depth_m, confidence, center_x, center_y, box_width, box_height))
+                results.append((class_id, mean_depth_m, confidence, center_x, center_y, box_width, box_height, x1, y1, x2, y2))
             
         return results if results else None  # 리스트가 비어 있으면 None 반환
     
