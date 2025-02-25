@@ -4,4 +4,6 @@
 
     <!-- 노드 실행 -->
     <node pkg="geonova" type="main.py" name="geonova_node" output="screen" />
+
+    <node pkg="geonova" type="gps_filter.py" name="geonova_filter_node" output="screen" />
 </launch>

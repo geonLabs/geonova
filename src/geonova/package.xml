@@ -16,8 +16,9 @@
   <exec_depend>std_msgs</exec_depend>
 
   <!-- msg 의존성 -->
-  <!-- <build_depend>message_generation</build_depend>
-  <exec_depend>message_runtime</exec_depend> -->
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_generation</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
 
   <!-- Python 관련 의존성 -->
   <build_depend>python3</build_depend>
@@ -30,4 +31,3 @@
     <build_type>catkin</build_type>
   </export>
 </package>
-

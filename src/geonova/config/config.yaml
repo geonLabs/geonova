@@ -9,4 +9,4 @@ rgb_width: 1920
 rgb_height: 1080
 
 tensorrt: True
-verbose: True
+verbose: False

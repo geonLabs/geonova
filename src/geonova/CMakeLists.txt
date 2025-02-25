@@ -5,30 +5,29 @@ project(geonova)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
-  #message_generation
+  message_generation  # ✅ 메시지 생성 패키지 추가
 )
 
 # Use setup.py for Python package installation
-# Must be before generate_messages()
 catkin_python_setup()
 
-# Add message files
-#add_message_files(
-  #FILES
-  #Detection.msg
-  #DetectionArray.msg
-#)
+# ✅ 메시지 파일 추가
+add_message_files(
+  FILES
+  Detection.msg
+  Detections.msg
+)
 
-# Generate messages
-#generate_messages(
-  #DEPENDENCIES
-  #std_msgs
-#)
+# ✅ 메시지 생성 설정
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
-# Declare the catkin package
-#catkin_package(
-  #CATKIN_DEPENDS message_runtime
-#)
+# ✅ 패키지 선언 (message_generation 제거!)
+catkin_package(
+  CATKIN_DEPENDS message_runtime  # ✅ 여기에서 message_generation 제거!
+)
 
 # Include directories
 include_directories(
@@ -38,6 +37,7 @@ include_directories(
 # Install Python scripts (for execution)
 catkin_install_python(PROGRAMS
   script/main.py
+  script/utils/gps_filter.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}/script
 )
 

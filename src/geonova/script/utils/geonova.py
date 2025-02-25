@@ -10,6 +10,7 @@ import utils.yolo_models
 import utils.image_tools
 import utils.mv_tools
 import utils.mqtt_send
+import utils.detection_publisher
 
 import time
 
@@ -38,6 +39,8 @@ class Geonova:
 
         self.vision_model = utils.yolo_models.yolo_v8(self.model_path)
         self.save_result_dir = os.path.join(self.ros_pack_dir, self.save_dir)
+
+        self.detection_publisher = utils.detection_publisher.DetectionPublisher()  # 추가
 
     def __call__(self):
         rospy.init_node("geonva", anonymous=True)
@@ -83,5 +86,7 @@ class Geonova:
         if gps_coordinate is None:
             return
         
-        payloader = utils.mqtt_send.PayloadSender(gps_coordinate, img_name)
-        payloader()
+        self.detection_publisher.publish_detections(gps_coordinate)
+        
+        # payloader = utils.mqtt_send.PayloadSender(gps_coordinate, img_name)
+        # payloader()
