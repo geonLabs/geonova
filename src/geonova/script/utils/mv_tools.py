@@ -1,13 +1,6 @@
 import rospy
 import math
 
-"""
-필요한 함수
-GPS 수신
-GPS Heading값 수신
-
-"""
-
 class CalCoordinate:
     def __init__(self, imu_msg, gps_msg, depth_result, heading_msg):
     # def __init__(self, imu_msg, gps_msg, depth_result):
@@ -27,25 +20,24 @@ class CalCoordinate:
 
         self.depth_result = depth_result # [(result1), (result2), ...]
 
+        self.obj_results = []
+
     def __call__(self, *args, **kwds):
         if self.depth_result is None:
             return
-        object_coordinate = self.gps_coordinate()
-        print("car_coordinate : ", (self.lat, self.lon))
-        print("object_coordinate : ", object_coordinate)
+        self.gps_coordinate()
+        if len(self.return_result()) == 0:
+            return None
+        return self.return_result()
 
-    def return_gps_heading(self):
-        return self.heading
     def gps_coordinate(self):
         R = 6378137.0  # 지구 반지름 (미터)
 
-        print("heading : ", self.heading)
         # 위도, 경도, heading을 라디안으로 변환
         lat_rad = cal_radians(self.lat)
         lon_rad = cal_radians(self.lon)
         heading_rad = cal_radians(self.heading)
 
-        object_result = []
         for result in self.depth_result:
             norm_x = (result[3] - self.rgb_width / 2) / (self.rgb_width / 2)
 
@@ -75,13 +67,41 @@ class CalCoordinate:
             object_lat = math.degrees(result_lat_rad)
             object_lon = math.degrees(result_lon_rad)
 
-            object_result.append((object_lat, object_lon))
+            self.obj_results.append([object_lat, object_lon])
         
-        return object_result
+        return self.obj_results
 
     def imu_coordinate(self):
         pass
     
+    def return_gps_heading(self):
+        return self.heading
+    
+    def return_result(self):
+        send_mqtt_result = []
+        """
+        massage_protocol
+        [class_id, confidence, x_center, y_center, width, height, object_lat, object_lon], 
+        [], 
+        [], ...
+        """
+        for i, obj_result in enumerate(self.obj_results):
+            if self.depth_result[i][0] > 5:
+                continue
+            send_mqtt_result.append(
+                (self.depth_result[i][0], 
+                 self.depth_result[i][2],
+                 self.depth_result[i][3],
+                 self.depth_result[i][4], 
+                 self.depth_result[i][5],
+                 self.depth_result[i][6],
+                 round(obj_result[0], 5), 
+                 round(obj_result[1], 5)
+                 )
+            )
+
+        return send_mqtt_result
+
 
 class Moving_check:
     def __init__(self):

@@ -9,6 +9,7 @@ from geometry_msgs.msg import QuaternionStamped
 import utils.yolo_models
 import utils.image_tools
 import utils.mv_tools
+import utils.mqtt_send
 
 import time
 
@@ -64,19 +65,25 @@ class Geonova:
         
         if results.boxes.xywh.numel() < 1:
             return
-        # self.image_tools.save_image(rgb_image, self.save_result_dir)
+        
         depth = self.image_tools.result_depth(stereo_image, results)
 
         if depth is None:
             return
         
-        print("depth : ", depth)
-        self.image_tools.save_image(results.plot(line_width=2, font_size=2), self.save_result_dir)
+        #img_name = self.image_tools.save_image(rgb_image, self.save_result_dir, results)
+        img_name = self.image_tools.save_image(results.plot(line_width=2, font_size=2), self.save_result_dir, results)
 
+        if img_name is None:
+            return
+        
         gps_check = utils.mv_tools.CalCoordinate(imu_msg, gps_msg, depth, gps_navpvt_sub)
-        gps_check()
+        gps_coordinate = gps_check()
 
-    def stereo(self):
-        pass
+        if gps_coordinate is None:
+            return
 
-    
+        print(f"GPS: {gps_coordinate}")
+        
+        # payloader = utils.mqtt_send.PayloadSender(gps_coordinate, img_name)
+        # payloader()
