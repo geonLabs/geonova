@@ -9,7 +9,6 @@ from geometry_msgs.msg import QuaternionStamped
 import utils.yolo_models
 import utils.image_tools
 import utils.mv_tools
-import utils.mqtt_send
 import utils.detection_publisher
 
 import time
@@ -86,7 +85,5 @@ class Geonova:
         if gps_coordinate is None:
             return
         
-        self.detection_publisher.publish_detections(gps_coordinate)
+        self.detection_publisher.publish_detections(gps_coordinate, img_name)
         
-        # payloader = utils.mqtt_send.PayloadSender(gps_coordinate, img_name)
-        # payloader()

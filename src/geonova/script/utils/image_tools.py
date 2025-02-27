@@ -19,7 +19,7 @@ class image_tools:
             elif image_msg.encoding == "bgr8":
                 # Convert color image
                 cv_image = self.bridge.imgmsg_to_cv2(image_msg, desired_encoding="bgr8")
-                #cv_image = self.preprocess_color_image(cv_image)
+                cv_image = self.preprocess_color_image(cv_image)
 
             else:
                 rospy.logerr(f"Unsupported image encoding: {image_msg.encoding}")
@@ -97,11 +97,16 @@ class image_tools:
         confidences = results.boxes.conf.cpu().numpy()
 
         height, width, _ = image.shape
-        has_class_5_below_with_high_conf = False  # 클래스 5 이하에서 conf ≥ 0.75 여부 체크
+        has_class_5_below_with_high_conf = False  # 클래스 5 이하에서 conf ≥ 기준값 여부 체크
 
         for box, class_id, confidence in zip(boxes, class_ids, confidences):
-            # 클래스 5 이하 & conf_score ≥ 0.75 → 아무 처리 안 함 (체크만 함)
-            if class_id <= 5 and confidence >= 0.8:
+            # 클래스 0: conf_score ≥ 0.5
+            if class_id == 0 and confidence >= 0.5:
+                has_class_5_below_with_high_conf = True
+                continue
+
+            # 클래스 1~5: conf_score ≥ 0.8
+            if 1 <= class_id <= 5 and confidence >= 0.8:
                 has_class_5_below_with_high_conf = True
                 continue
 
@@ -121,6 +126,7 @@ class image_tools:
                     image[y1:y2, x1:x2] = blurred_roi
 
         return image, has_class_5_below_with_high_conf
+
     
     def calculate_depth_at_center(self, depth_image, center_x, center_y, box_width, box_height):
         height, width = depth_image.shape
@@ -159,19 +165,31 @@ class image_tools:
 
         height, width = depth_img.shape
         results = []
-        
+        has_valid_class_0_to_5 = False  # 클래스 0~5 조건을 만족하는 객체가 있는지 확인
+
         for box, class_id, confidence, boxes_xyxy in zip(boxes, class_ids, confidences, boxes_xyxys):
+            # 신뢰도 조건 적용
+            if (class_id == 0 and confidence >= 0.5) or (1 <= class_id <= 5 and confidence >= 0.8):
+                has_valid_class_0_to_5 = True  # 클래스 0~5 중 하나라도 조건 만족
+
+            if (class_id == 0 and confidence < 0.5) or \
+            (1 <= class_id <= 5 and confidence < 0.8) or \
+            (class_id >= 6 and confidence < 0.6):
+                continue  # 조건을 만족하지 않으면 무시
+
             # 박스 좌표 (정규화된 값 → 픽셀 단위)
             center_x, center_y = int(box[0] * width), int(box[1] * height)
             box_width, box_height = int(box[2] * width), int(box[3] * height)
             x1, y1, x2, y2 = boxes_xyxy
-            
+
             # 깊이값 추출
             mean_depth_m = self.calculate_depth_at_center(depth_img, center_x, center_y, box_width, box_height)
             if mean_depth_m:
                 results.append((class_id, mean_depth_m, confidence, center_x, center_y, box_width, box_height, x1, y1, x2, y2))
-            
-        return results if results else None  # 리스트가 비어 있으면 None 반환
+
+        # 클래스 0~5가 하나도 없으면 None 반환
+        return results if has_valid_class_0_to_5 else None
+
     
     def save_rawimage(self, cv_image, save_path):
         try:

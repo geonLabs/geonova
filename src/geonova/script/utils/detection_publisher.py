@@ -1,11 +1,12 @@
 import rospy
-from geonova.msg import Detections, Detection  # msg 파일 경로에 맞게 수정
+from geonova.msg import Detections, Detection  
+import os
 
 class DetectionPublisher:
     def __init__(self):
         self.pub = rospy.Publisher("detections_topic", Detections, queue_size=10)
 
-    def publish_detections(self, gps_coordinate):
+    def publish_detections(self, gps_coordinate, img_path):
         """
         gps_coordinate: List of lists containing detection data.
         Format: [[class_id, confidence, x1, y1, x2, y2, object_lat, object_lon], ...]
@@ -14,6 +15,8 @@ class DetectionPublisher:
             return
 
         detections_msg = Detections()
+        detections_msg.img_path = img_path
+        detections_msg.img_name = os.path.basename(img_path)
 
         for data in gps_coordinate:
             detection = Detection()
@@ -28,5 +31,5 @@ class DetectionPublisher:
 
             detections_msg.detections.append(detection)
 
-        rospy.loginfo(f"Publishing {len(detections_msg.detections)} detections with GPS")
+        # rospy.loginfo(f"Publishing {len(detections_msg.detections)} detections with GPS")
         self.pub.publish(detections_msg)
