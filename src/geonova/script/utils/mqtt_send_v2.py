@@ -5,61 +5,71 @@ import json
 import uuid
 from datetime import datetime
 
+
 class PayloadSender:
     def __init__(self, results, img_path):
-        self.results = results  # ✅ 한 이미지에 대한 검출 리스트
-        self.img_path = img_path  # ✅ 한 개의 이미지 파일
+        self.results = results
+        self.img_path = img_path
         self.timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
         self.ip = "220.90.239.142"
         self.port = 1883
         self.username = "robot"
         self.password = "robot123"
-        self.robot_id = "geon-2"
+        self.robot_id = "geon_2"
         self.topic = f"mrm/{self.robot_id}/eventAI/result"
         self.api_url = f"http://{self.ip}:7080/col/v1/image/saveImageFiles.do"
         self.header_key = "X-GEO-ROADAI-API"
         self.header_value = "Geon ce79e749650fb0c8595801d94c222bbc"
 
         self.message = None
-        self.boxes_result = None
+        self.boxes_result = ""
         self.events = []
         self.client = mqtt.Client()
 
     def __call__(self, *args, **kwds):
+        if not self.results:
+            return
         self.recive_result()
+        if not self.events:
+            return
         self.message_parser()
         self.configure_mqtt()
         self.upload_image()
 
     def recive_result(self):
-        for data in self.results:
-            box_values = ",".join(
-                str(int(value)) if i in [2, 3, 4, 5] else f"{value:.2f}" if i == 1 else str(value)
-                for i, value in enumerate(data[:6])
-            )
+        if not isinstance(self.results, list):
+            return
 
-            if self.boxes_result:
-                self.boxes_result = f"{self.boxes_result},{box_values}"
-            else:
-                self.boxes_result = box_values
+        for obj in self.results:
+            if not isinstance(obj, dict):
+                continue
 
-            x = data[7]
-            y = data[6]
+            timestamp = obj.get("Time") or self.timestamp
+            self.timestamp = timestamp
+
+            bounding_box = obj.get("BoundingBOX")
+            if bounding_box and isinstance(bounding_box, (list, tuple)) and len(bounding_box) == 4:
+                x1, y1, x2, y2 = [str(coord) for coord in bounding_box]
+                box_data = f"{obj.get('ClassID', 'Unknown')},{obj.get('Confidence', '0')},{x1},{y1},{x2},{y2}"
+                if self.boxes_result:
+                    self.boxes_result = f"{self.boxes_result},{box_data}"
+                else:
+                    self.boxes_result = box_data
 
             event = {
-                "eventID": str(uuid.uuid4()),
+                "eventID": obj.get("ID", str(uuid.uuid4())),
                 "eventType": "SOC",
-                "imageID": os.path.basename(self.img_path),  # ✅ 이미지 파일 이름 저장
-                "timestamp": self.timestamp,
+                "imageID": f"{obj.get('IMG_ID', 'Unknown')}.jpg",
+                "timestamp": timestamp,
                 "location": {
-                    "x": str(x),
-                    "y": str(y),
+                    "x": str(obj.get("Longitude", "0")),
+                    "y": str(obj.get("Latitude", "0")),
                 },
                 "eventContent": {
                     "track_id": "1",
-                    "classified": str(data[0]),
-                    "score": str(data[1])
+                    "classified": str(obj.get("ClassID", "Unknown")),
+                    "score": str(obj.get("Confidence", "0")),
                 }
             }
             self.events.append(event)

@@ -41,7 +41,7 @@ class PayloadSender:
         self.port = 1883
         self.username = "robot"
         self.password = "robot123"
-        self.robot_id = "geon_1"
+        self.robot_id = "geon_2"
         self.topic = f"mrm/{self.robot_id}/eventAI/result"
         self.api_url = f"http://{self.ip}:7080/col/v1/image/saveImageFiles.do"
         self.header_key = "X-GEO-ROADAI-API"

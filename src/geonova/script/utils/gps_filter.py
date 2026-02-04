@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import os
+import uuid
+from datetime import datetime
 import rospy
 from geonova.msg import Detections, Detection
 import math
@@ -68,7 +71,7 @@ class DetectionFilter:
 
         # 필터링 완료된 데이터 전송
         for img_path, detections in filtered_by_image.items():
-            converted_data = self.convert_to_payload_format(detections)
+            converted_data = self.convert_to_payload_format(detections, img_path)
             payload_sender = PayloadSender(converted_data, img_path)  # ✅ 이미지별로 전송
             payload_sender()  # ✅ 실행
 
@@ -91,20 +94,29 @@ class DetectionFilter:
         if current_time - self.last_received_time >= self.publish_interval:
             self.filter_detections()
 
-    def convert_to_payload_format(self, detections):
-        """PayloadSender가 기대하는 리스트 형식으로 변환"""
+    def convert_to_payload_format(self, detections, img_path):
+        """PayloadSender가 기대하는 dict 리스트 형식으로 변환"""
         converted_data = []
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        img_name = os.path.basename(img_path) if img_path else ""
+        img_id = os.path.splitext(img_name)[0] if img_name else "Unknown"
+
         for detection in detections:
-            converted_data.append([
-                detection.classid,      # class_id (int)
-                detection.conf,         # confidence (float)
-                detection.x1,           # x1 (int)
-                detection.y1,           # y1 (int)
-                detection.x2,           # x2 (int)
-                detection.y2,           # y2 (int)
-                detection.object_lat,   # object_lat (float)
-                detection.object_lon    # object_lon (float)
-            ])
+            converted_data.append({
+                "ID": str(uuid.uuid4()),
+                "Time": timestamp,
+                "ClassID": str(detection.classid),
+                "Confidence": str(detection.conf),
+                "Latitude": float(detection.object_lat),
+                "Longitude": float(detection.object_lon),
+                "IMG_ID": img_id,
+                "BoundingBOX": [
+                    int(detection.x1),
+                    int(detection.y1),
+                    int(detection.x2),
+                    int(detection.y2),
+                ],
+            })
         return converted_data
 
 if __name__ == "__main__":
