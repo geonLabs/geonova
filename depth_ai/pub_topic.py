@@ -69,8 +69,8 @@ sync.out.link(xout.input)
 # disparity 값을 uint8로 변환
 disparityMultiplier = 255.0 / stereo.initialConfig.getMaxDisparity()
 
-startX, startY, width, height = 300, 0, 1320, 600
-
+# startX, startY, width, height = 300, 0, 1320, 600
+# startX, startY, width, height = 0, 0, 0, 0
 # ROS 노드 초기화
 rospy.init_node('oak_camera_publisher', anonymous=True)
 
@@ -85,9 +85,9 @@ with dai.Device(pipeline) as device:
     controlQueue = device.getInputQueue("rgb_ctrl")
 
     ctrl = dai.CameraControl()
-    ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.OFF)  # Auto focus
+    ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.AUTO)  # Auto focus
     ctrl.setAutoExposureEnable()  # Auto exposure
-    ctrl.setAutoExposureRegion(startX, startY, width, height)
+    # ctrl.setAutoExposureRegion(startX, startY, width, height)
 
     controlQueue.send(ctrl)
 
