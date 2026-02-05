@@ -10,6 +10,7 @@ import time
 class image_tools:
     def __init__(self):
         self.bridge = CvBridge()
+        self.use_clahe = rospy.get_param("use_clahe", True)
 
     def convert_image(self, image_msg):
         try:
@@ -19,7 +20,8 @@ class image_tools:
             elif image_msg.encoding == "bgr8":
                 # Convert color image
                 cv_image = self.bridge.imgmsg_to_cv2(image_msg, desired_encoding="bgr8")
-                cv_image = self.preprocess_color_image(cv_image)
+                if self.use_clahe:
+                    cv_image = self.preprocess_color_image(cv_image)
 
             else:
                 rospy.logerr(f"Unsupported image encoding: {image_msg.encoding}")

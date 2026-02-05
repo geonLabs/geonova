@@ -11,3 +11,4 @@ rgb_height: 1080
 
 tensorrt: True
 verbose: True
+use_clahe: True
