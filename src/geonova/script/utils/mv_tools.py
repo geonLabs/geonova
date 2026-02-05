@@ -7,8 +7,16 @@ class CalCoordinate:
         self.lat = gps_msg.latitude
         self.lon = gps_msg.longitude
 
-        # heading값 바꿔야 하는 부분
-        self.heading = heading_msg.quaternion.w
+        self.heading_mode = rospy.get_param("heading_mode", "v1").lower()
+        if self.heading_mode in ("v2", "quat_yaw", "quat"):
+            q = heading_msg.quaternion
+            yaw_rad = math.atan2(
+                2.0 * (q.w * q.z + q.x * q.y),
+                1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+            )
+            self.heading = math.degrees(yaw_rad) % 360
+        else:
+            self.heading = heading_msg.quaternion.w
         
 
         self.imu_orient = imu_msg.orientation

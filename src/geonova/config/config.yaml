@@ -1,9 +1,10 @@
-model: "models/version4.2_model_m_param_imgsz_1280_best.engine"
+model: "models/version4.2_model_s_param_imgsz_1280_best.engine"
 save_dir: "save_dir"
 rgb_topic: "/oak/rgb/image_raw"
 stereo_topic: "/oak/stereo/image_raw"
 imu_topic: "/imu"
 gps_topic: "/ublox/fix"
+heading_mode: "v1"
 
 rgb_width: 1920
 rgb_height: 1080
