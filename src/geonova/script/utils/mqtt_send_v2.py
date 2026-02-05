@@ -16,7 +16,7 @@ class PayloadSender:
         self.port = 1883
         self.username = "robot"
         self.password = "robot123"
-        self.robot_id = "geon_2"
+        self.robot_id = "geon-2"
         self.topic = f"mrm/{self.robot_id}/eventAI/result"
         self.api_url = f"http://{self.ip}:7080/col/v1/image/saveImageFiles.do"
         self.header_key = "X-GEO-ROADAI-API"
@@ -63,8 +63,8 @@ class PayloadSender:
                 "imageID": f"{obj.get('IMG_ID', 'Unknown')}.jpg",
                 "timestamp": timestamp,
                 "location": {
-                    "x": str(obj.get("Longitude", "0")),
-                    "y": str(obj.get("Latitude", "0")),
+                    "x": obj.get("Longitude", "0"), #float
+                    "y": obj.get("Latitude", "0"), #float
                 },
                 "eventContent": {
                     "track_id": "1",

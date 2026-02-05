@@ -85,8 +85,8 @@ with dai.Device(pipeline) as device:
     controlQueue = device.getInputQueue("rgb_ctrl")
 
     ctrl = dai.CameraControl()
-    ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.AUTO)  # Auto focus
-    ctrl.setAutoExposureEnable()  # Auto exposure
+    #ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.AUTO)  # Auto focus
+    #ctrl.setAutoExposureEnable()  # Auto exposure
     # ctrl.setAutoExposureRegion(startX, startY, width, height)
 
     controlQueue.send(ctrl)
